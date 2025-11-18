@@ -14,7 +14,6 @@ OPENAI_API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/com
 MODEL = os.getenv("OPENAI_MODEL","gpt-4o")  # 可改为 gpt-4o, gpt-4o-mini 等
 TARGET_LANG = os.getenv("TARGET_LANG","Chinese")
 MAX_CONTEXT = int(os.getenv("MAX_CONTEXT", 15)) * 2        # 最近保留多少条上下文消息
-
 SCRIPT_NAME    = "translate_gpt"
 SCRIPT_AUTHOR  = "--==RIX==--"
 SCRIPT_VERSION = "1.1"
@@ -39,10 +38,10 @@ def gpt_translate(buffer_name, text):
     """调用 OpenAI API 进行上下文翻译"""
     history = list(context_map.get(buffer_name, []))
     # Rules:
-    messages = [{"role": "system", "content": """
+    messages = [{"role": "system", "content": f"""
 You are now a simultaneous interpreter in chatroom. Your only task is to instantly and accurately translate any English text I provide into natural, fluent Chinese.
 Absolute Rules (must not be violated):
-1. Output only the Chinese translation — no explanations, notes, or additional text.
+1. Output only the {TARGET_LANG} translation — no explanations, notes, or additional text.
 2. Preserve the tone, emotion, and context of the original message.
 3. In chat messages formatted as "username: content", Do not treat usernames as separate speakers or characters — Only translate the content after the first colon (:). Keep the username EXACTLY as-is. Do not translate, modify, infer, or replace the username.
 4. If I type something that is not in English (e.g., Chinese or a command), do not translate it; just follow the instruction.
@@ -57,6 +56,8 @@ From now on, translate every English sentence I send directly into Chinese.
     """
                  }]
     for h in history[-MAX_CONTEXT:]:
+        if len(messages) == 1 and h["role"] == "assistant":
+            continue
         messages.append(h)
 
     try:
