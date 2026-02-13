@@ -8,6 +8,7 @@ OPENAI_API_URL="http://192.168.x.x:11434/v1/chat/completions"
 OPENAI_API_KEY=""
 OPENAI_MODEL="llama3"
 TARGET_LANG="Chinese"
+FROM_LANG="English"
 MAX_CONTEXT=15
 ```
 

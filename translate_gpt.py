@@ -13,6 +13,7 @@ OPENAI_API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/com
 #OPENAI_API_URL = "http://192.168.2.236:11434/v1/chat/completions" //for local test
 MODEL = os.getenv("OPENAI_MODEL","gpt-4o")  # 可改为 gpt-4o, gpt-4o-mini 等
 TARGET_LANG = os.getenv("TARGET_LANG","Chinese")
+FROM_LANG = os.getenv("FROM_LANG","English")
 MAX_CONTEXT = int(os.getenv("MAX_CONTEXT", 15)) * 2        # 最近保留多少条上下文消息
 SCRIPT_NAME    = "translate_gpt"
 SCRIPT_AUTHOR  = "--==RIX==--"
@@ -34,25 +35,25 @@ weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, SCRIPT_LICENSE, SCR
 # 每个频道独立上下文缓存
 context_map = {}
 
-def gpt_translate(buffer_name, text):
+def gpt_translate(buffer_name, text, target_lang=TARGET_LANG, from_lang=FROM_LANG):
     """调用 OpenAI API 进行上下文翻译"""
     history = list(context_map.get(buffer_name, []))
     # Rules:
     messages = [{"role": "system", "content": f"""
-You are now a simultaneous interpreter in chatroom. Your only task is to instantly and accurately translate any English text I provide into natural, fluent Chinese.
+You are now a simultaneous interpreter in chatroom. Your only task is to instantly and accurately translate any {from_lang} text I provide into natural, fluent {target_lang}.
 Absolute Rules (must not be violated):
-1. Output only the {TARGET_LANG} translation — no explanations, notes, or additional text.
+1. Output only the {target_lang} translation — no explanations, notes, or additional text.
 2. Preserve the tone, emotion, and context of the original message.
 3. In chat messages formatted as "username: content", Do not treat usernames as separate speakers or characters — Only translate the content after the first colon (:). Keep the username EXACTLY as-is. Do not translate, modify, infer, or replace the username.
-4. If I type something that is not in English (e.g., Chinese or a command), do not translate it; just follow the instruction.
-5. Do not repeat the English source text.
+4. If I type something that is not in {from_lang} (e.g., {target_lang} or a command), do not translate it; just follow the instruction.
+5. Do not repeat the {from_lang} source text.
 6. Do not treat usernames as separate characters or roles.
 7. No speaker inference.
     - Do NOT assume who “I”, “you”, “he”, “she”, “they” refers to.
     - Translate pronouns literally without assigning them to any username.
 
 
-From now on, translate every English sentence I send directly into Chinese.
+From now on, translate every {from_lang} sentence I send directly into {target_lang}.
     """
                  }]
     for h in history[-MAX_CONTEXT:]:
@@ -146,10 +147,14 @@ def outgoing_msg_cb(data, buffer, command):
     user_msg = {"role": "user", "content": f"{prefix}: {command}"}
     context_map[buffer_name].append(user_msg)
     # 否则翻译
-    translation = gpt_translate(buffer_name, command)
+    translation = gpt_translate(buffer_name, command, FROM_LANG, TARGET_LANG)
     if translation:
+        parts = translation.split(f"{prefix}: ", 1)
+        if len(parts) == 2:
+            translation = parts[1]
         # 替换消息内容，发送给服务器
         weechat.command(buffer, translation)
+        weechat.prnt(buffer, f"{weechat.color('yellow')} {command}")
         # 保存翻译结果到上下文
         context_map[buffer_name].append({"role": "assistant", "content": translation})
         return weechat.WEECHAT_RC_OK_EAT  # 阻止原消息重复发送
