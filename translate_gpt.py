@@ -150,10 +150,11 @@ def outgoing_msg_cb(data, buffer, command):
     translation = gpt_translate(buffer_name, command, FROM_LANG, TARGET_LANG)
     if translation:
         parts = translation.split(f"{prefix}: ", 1)
+        sub_translation = translation
         if len(parts) == 2:
-            translation = parts[1]
+            sub_translation = parts[1]
         # 替换消息内容，发送给服务器
-        weechat.command(buffer, translation)
+        weechat.command(buffer, sub_translation)
         weechat.prnt(buffer, f"{weechat.color('yellow')} {command}")
         # 保存翻译结果到上下文
         context_map[buffer_name].append({"role": "assistant", "content": translation})
